@@ -3,6 +3,7 @@ import { Pair, Route, Trade } from './entities'
 import { Router } from './router'
 import invariant from 'tiny-invariant'
 import { CurrencyAmount, Percent, Ether, Token, WETH9 } from '@uniswap/sdk-core'
+import { FACTORY_ADDRESS, INIT_CODE_HASH } from './testConfig'
 
 function checkDeadline(deadline: string[] | string): void {
   expect(typeof deadline).toBe('string')
@@ -18,24 +19,38 @@ describe('Router', () => {
 
   const pair_0_1 = new Pair(
     CurrencyAmount.fromRawAmount(token0, JSBI.BigInt(1000)),
-    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1000))
+    CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(1000)),
+    FACTORY_ADDRESS,
+    INIT_CODE_HASH
   )
 
   const pair_weth_0 = new Pair(
     CurrencyAmount.fromRawAmount(WETH9[1], '1000'),
-    CurrencyAmount.fromRawAmount(token0, '1000')
+    CurrencyAmount.fromRawAmount(token0, '1000'),
+    FACTORY_ADDRESS,
+    INIT_CODE_HASH
   )
 
   describe('#swapCallParameters', () => {
     describe('exact in', () => {
       it.only('ether to token1', () => {
-        const result = Router.swapCallParameters(
-          Trade.exactIn(
-            new Route([pair_weth_0, pair_0_1], ETHER, token1),
-            CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
-          ),
-          { ttl: 50, recipient: '0x0000000000000000000000000000000000000004', allowedSlippage: new Percent('1', '100') }
-        )
+        function getResult(customMethod?: string) {
+          return Router.swapCallParameters(
+            Trade.exactIn(
+              new Route([pair_weth_0, pair_0_1], ETHER, token1),
+              CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
+            ),
+            {
+              ttl: 50,
+              recipient: '0x0000000000000000000000000000000000000004',
+              allowedSlippage: new Percent('1', '100'),
+              etherMethods: {
+                swapExactETHForTokens: customMethod
+              }
+            }
+          )
+        }
+        const result = getResult()
         expect(result.methodName).toEqual('swapExactETHForTokens')
         expect(result.args.slice(0, -1)).toEqual([
           '0x51',
@@ -44,20 +59,28 @@ describe('Router', () => {
         ])
         expect(result.value).toEqual('0x64')
         checkDeadline(result.args[result.args.length - 1])
+        const resultCustom = getResult('swapExactETHForTokensCustom')
+        expect(resultCustom.methodName).toEqual('swapExactETHForTokensCustom')
       })
 
       it('deadline specified', () => {
-        const result = Router.swapCallParameters(
-          Trade.exactIn(
-            new Route([pair_weth_0, pair_0_1], ETHER, token1),
-            CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
-          ),
-          {
-            deadline: 50,
-            recipient: '0x0000000000000000000000000000000000000004',
-            allowedSlippage: new Percent('1', '100')
-          }
-        )
+        function getResult(customMethod?: string) {
+          return Router.swapCallParameters(
+            Trade.exactIn(
+              new Route([pair_weth_0, pair_0_1], ETHER, token1),
+              CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
+            ),
+            {
+              deadline: 50,
+              recipient: '0x0000000000000000000000000000000000000004',
+              allowedSlippage: new Percent('1', '100'),
+              etherMethods: {
+                swapExactETHForTokens: customMethod
+              }
+            }
+          )
+        }
+        const result = getResult()
         expect(result.methodName).toEqual('swapExactETHForTokens')
         expect(result.args).toEqual([
           '0x51',
@@ -66,16 +89,28 @@ describe('Router', () => {
           '0x32'
         ])
         expect(result.value).toEqual('0x64')
+        const resultCustom = getResult('swapExactETHForTokensCustom')
+        expect(resultCustom.methodName).toEqual('swapExactETHForTokensCustom')
       })
 
       it('token1 to ether', () => {
-        const result = Router.swapCallParameters(
-          Trade.exactIn(
-            new Route([pair_0_1, pair_weth_0], token1, ETHER),
-            CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
-          ),
-          { ttl: 50, recipient: '0x0000000000000000000000000000000000000004', allowedSlippage: new Percent('1', '100') }
-        )
+        function getResult(customMethod?: string) {
+          return Router.swapCallParameters(
+            Trade.exactIn(
+              new Route([pair_0_1, pair_weth_0], token1, ETHER),
+              CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
+            ),
+            {
+              ttl: 50,
+              recipient: '0x0000000000000000000000000000000000000004',
+              allowedSlippage: new Percent('1', '100'),
+              etherMethods: {
+                swapExactTokensForETH: customMethod
+              }
+            }
+          )
+        }
+        const result = getResult()
         expect(result.methodName).toEqual('swapExactTokensForETH')
         expect(result.args.slice(0, -1)).toEqual([
           '0x64',
@@ -85,6 +120,8 @@ describe('Router', () => {
         ])
         expect(result.value).toEqual('0x0')
         checkDeadline(result.args[result.args.length - 1])
+        const resultCustom = getResult('swapExactTokensForETHCustom')
+        expect(resultCustom.methodName).toEqual('swapExactTokensForETHCustom')
       })
       it('token0 to token1', () => {
         const result = Router.swapCallParameters(
@@ -104,13 +141,23 @@ describe('Router', () => {
     })
     describe('exact out', () => {
       it('ether to token1', () => {
-        const result = Router.swapCallParameters(
-          Trade.exactOut(
-            new Route([pair_weth_0, pair_0_1], ETHER, token1),
-            CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
-          ),
-          { ttl: 50, recipient: '0x0000000000000000000000000000000000000004', allowedSlippage: new Percent('1', '100') }
-        )
+        function getResult(customMethod?: string) {
+          return Router.swapCallParameters(
+            Trade.exactOut(
+              new Route([pair_weth_0, pair_0_1], ETHER, token1),
+              CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
+            ),
+            {
+              ttl: 50,
+              recipient: '0x0000000000000000000000000000000000000004',
+              allowedSlippage: new Percent('1', '100'),
+              etherMethods: {
+                swapETHForExactTokens: customMethod
+              }
+            }
+          )
+        }
+        const result = getResult()
         expect(result.methodName).toEqual('swapETHForExactTokens')
         expect(result.args.slice(0, -1)).toEqual([
           '0x64',
@@ -119,15 +166,27 @@ describe('Router', () => {
         ])
         expect(result.value).toEqual('0x80')
         checkDeadline(result.args[result.args.length - 1])
+        const resultCustom = getResult('swapETHForExactTokensCustom')
+        expect(resultCustom.methodName).toEqual('swapETHForExactTokensCustom')
       })
       it('token1 to ether', () => {
-        const result = Router.swapCallParameters(
-          Trade.exactOut(
-            new Route([pair_0_1, pair_weth_0], token1, ETHER),
-            CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
-          ),
-          { ttl: 50, recipient: '0x0000000000000000000000000000000000000004', allowedSlippage: new Percent('1', '100') }
-        )
+        function getResult(customMethod?: string) {
+          return Router.swapCallParameters(
+            Trade.exactOut(
+              new Route([pair_0_1, pair_weth_0], token1, ETHER),
+              CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
+            ),
+            {
+              ttl: 50,
+              recipient: '0x0000000000000000000000000000000000000004',
+              allowedSlippage: new Percent('1', '100'),
+              etherMethods: {
+                swapTokensForExactETH: customMethod
+              }
+            }
+          )
+        }
+        const result = getResult()
         expect(result.methodName).toEqual('swapTokensForExactETH')
         expect(result.args.slice(0, -1)).toEqual([
           '0x64',
@@ -137,6 +196,8 @@ describe('Router', () => {
         ])
         expect(result.value).toEqual('0x0')
         checkDeadline(result.args[result.args.length - 1])
+        const resultCustom = getResult('swapTokensForExactETHCustom')
+        expect(resultCustom.methodName).toEqual('swapTokensForExactETHCustom')
       })
       it('token0 to token1', () => {
         const result = Router.swapCallParameters(
@@ -157,18 +218,24 @@ describe('Router', () => {
     describe('supporting fee on transfer', () => {
       describe('exact in', () => {
         it('ether to token1', () => {
-          const result = Router.swapCallParameters(
-            Trade.exactIn(
-              new Route([pair_weth_0, pair_0_1], ETHER, token1),
-              CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
-            ),
-            {
-              ttl: 50,
-              recipient: '0x0000000000000000000000000000000000000004',
-              allowedSlippage: new Percent('1', '100'),
-              feeOnTransfer: true
-            }
-          )
+          function getResult(customMethod?: string) {
+            return Router.swapCallParameters(
+              Trade.exactIn(
+                new Route([pair_weth_0, pair_0_1], ETHER, token1),
+                CurrencyAmount.fromRawAmount(Ether.onChain(1), JSBI.BigInt(100))
+              ),
+              {
+                ttl: 50,
+                recipient: '0x0000000000000000000000000000000000000004',
+                allowedSlippage: new Percent('1', '100'),
+                feeOnTransfer: true,
+                etherMethods: {
+                  swapExactETHForTokensSupportingFeeOnTransferTokens: customMethod
+                }
+              }
+            )
+          }
+          const result = getResult()
           expect(result.methodName).toEqual('swapExactETHForTokensSupportingFeeOnTransferTokens')
           expect(result.args.slice(0, -1)).toEqual([
             '0x51',
@@ -177,20 +244,28 @@ describe('Router', () => {
           ])
           expect(result.value).toEqual('0x64')
           checkDeadline(result.args[result.args.length - 1])
+          const resultCustom = getResult('swapExactETHForTokensSupportingFeeOnTransferTokensCustom')
+          expect(resultCustom.methodName).toEqual('swapExactETHForTokensSupportingFeeOnTransferTokensCustom')
         })
         it('token1 to ether', () => {
-          const result = Router.swapCallParameters(
-            Trade.exactIn(
-              new Route([pair_0_1, pair_weth_0], token1, ETHER),
-              CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
-            ),
-            {
-              ttl: 50,
-              recipient: '0x0000000000000000000000000000000000000004',
-              allowedSlippage: new Percent('1', '100'),
-              feeOnTransfer: true
-            }
-          )
+          function getResult(customMethod?: string) {
+            return Router.swapCallParameters(
+              Trade.exactIn(
+                new Route([pair_0_1, pair_weth_0], token1, ETHER),
+                CurrencyAmount.fromRawAmount(token1, JSBI.BigInt(100))
+              ),
+              {
+                ttl: 50,
+                recipient: '0x0000000000000000000000000000000000000004',
+                allowedSlippage: new Percent('1', '100'),
+                feeOnTransfer: true,
+                etherMethods: {
+                  swapExactTokensForETHSupportingFeeOnTransferTokens: customMethod
+                }
+              }
+            )
+          }
+          const result = getResult()
           expect(result.methodName).toEqual('swapExactTokensForETHSupportingFeeOnTransferTokens')
           expect(result.args.slice(0, -1)).toEqual([
             '0x64',
@@ -200,6 +275,8 @@ describe('Router', () => {
           ])
           expect(result.value).toEqual('0x0')
           checkDeadline(result.args[result.args.length - 1])
+          const resultCustom = getResult('swapExactTokensForETHSupportingFeeOnTransferTokensCustom')
+          expect(resultCustom.methodName).toEqual('swapExactTokensForETHSupportingFeeOnTransferTokensCustom')
         })
         it('token0 to token1', () => {
           const result = Router.swapCallParameters(
