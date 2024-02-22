@@ -1706,10 +1706,10 @@
     semver "^7.3.2"
     tsutils "^3.17.1"
 
-"@uniswap/sdk-core@^3.0.0-alpha.3":
-  version "3.0.0-alpha.3"
-  resolved "https://registry.yarnpkg.com/@uniswap/sdk-core/-/sdk-core-3.0.0-alpha.3.tgz#a742b430a9587fe48384aa5007706d225497c875"
-  integrity sha512-SS6fFbFZT2s/oq1dCdbqLGppVszfL1dkP8uQOIgXm9qecH9Vt70zTwQU73bLP2VskFZcpkN5inTAwSZiZSs5wA==
+"@uniswap/sdk-core@^4.0.7":
+  version "4.1.2"
+  resolved "https://registry.yarnpkg.com/@uniswap/sdk-core/-/sdk-core-4.1.2.tgz#8bf64ef6881574f1c3a3c5800916aa2b2965d00a"
+  integrity sha512-bk/oHiNCofy48ix84Q8aK/HHDmMVmk+SaoTq6U/93MmJ/nE7hbsckmY1c3MG2Vz1+jnGMCX9AmdBbnSF7VR5Ow==
   dependencies:
     "@ethersproject/address" "^5.0.2"
     big.js "^5.2.2"
